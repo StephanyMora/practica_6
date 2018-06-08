@@ -11,16 +11,28 @@
 
 #BIT setTrisC = 0xF94.4
 
-//se declaran variables globales
 int8 enteroTemperatura = 0, decimalTemperatura = 0, enteroRH = 0, decimalRH = 0, checksum = 0, lectura = 0;
 unsigned int variableMostrada = 0;
 unsigned int numerosDisplay[10] = {126, 48, 109, 121, 51, 91, 95, 112, 127, 123};
-unsigned int numerosDisplayDos[10] = {254, 176, 237, 249, 179, 219, 223, 240, 255, 251};
+unsigned int numerosDisplayPunto[10] = {254, 176, 237, 249, 179, 219, 223, 240, 255, 251};
 unsigned int mostrarSensado[9] = {0};
 unsigned int indiceDisplay = 1, contadorPushButtn = 1;
-unsigned int puntoDisplay = 1;
 
-//esta función es para saber qué variable se elijio para mostrar  
+#INT_TIMER0
+void isr_mostrarDisplay(){
+   indiceDisplay *= 2;
+   if(indiceDisplay > 8){
+        indiceDisplay = 1;
+   }
+   if(indiceDisplay == 2){
+      output_a(indiceDisplay);
+      output_d(numerosDisplayPunto[mostrarSensado[indiceDisplay]]);
+   }else{
+      output_a(indiceDisplay);
+      output_d(numerosDisplay[mostrarSensado[indiceDisplay]]);
+   }
+}
+
 #INT_EXT
 void variableSeleccionada_RB(){
    if(seleccion){
@@ -28,24 +40,6 @@ void variableSeleccionada_RB(){
    }
 }
 
-//ISR para mostrar leds
-#INT_TIMER0
-void isr_mostrarDisplay(){
-   setup_timer_0(RTCC_INTERNAL | RTCC_DIV_64 | RTCC_8_BIT);
-   output_a(indiceDisplay);
-   output_d(numerosDisplay[mostrarSensado[indiceDisplay]]);
-   indiceDisplay *= 2;
-   if(indiceDisplay > 8){
-      indiceDisplay = 1;
-   }
-
-   puntoDisplay *= 2;
-      if(puntoDisplay >= 4){
-            puntoDisplay = 1;
-      }
-}
-
-//función para establecer conexión con el sensor
 int establecerConexion(){
    setTrisC = 0;
    output_low(datosDHT);
@@ -64,7 +58,6 @@ int establecerConexion(){
    return lectura;
 }
 
-//funcion para leer datos del sensor 
 unsigned int8 leerDHT(){
    unsigned int8 i, k, datosLeidos =0;   
    for(i = 0; i < 8; i++){
@@ -96,11 +89,11 @@ unsigned int8 leerDHT(){
 
 void main (void){
    setup_oscillator(OSC_16MHZ);
-   setup_timer_0(RTCC_INTERNAL | RTCC_DIV_64 | RTCC_8_BIT);
-   //ext_int_edge(H_TO_L);
+   setup_timer_0(RTCC_INTERNAL|RTCC_DIV_64|RTCC_8_BIT);
    enable_interrupts(INT_TIMER0);
    enable_interrupts(INT_EXT);
    enable_interrupts(GLOBAL);
+   set_timer0(65223);
    set_tris_a(0x00);
    set_tris_e(0x00);
    set_tris_b(0xFF);
@@ -119,7 +112,6 @@ void main (void){
          output_low(ledTemperatura);
          output_high(ledHumedad); 
       }
-      
       if(establecerConexion()){
          enteroRH = leerDHT();
          decimalRH = leerDHT();
@@ -127,14 +119,11 @@ void main (void){
          decimalTemperatura = leerDHT();
          checksum = leerDHT();
          if(checksum == (enteroRH + decimalRH + enteroTemperatura + decimalTemperatura)){
-             
-             
-             
             if(variableMostrada == 1){
                mostrarSensado[1] = enteroTemperatura / 10;
                mostrarSensado[2] = enteroTemperatura % 10;
                mostrarSensado[4] = decimalTemperatura / 10;
-               mostrarSensado[8] = decimalTemperatura % 10;
+               mostrarSensado[8] = decimalTemperatura % 10;               
             }
             else if(variableMostrada == 0){ 
                mostrarSensado[1] = enteroRH / 10;
@@ -142,15 +131,8 @@ void main (void){
                mostrarSensado[4] = decimalRH / 10;
                mostrarSensado[8] = decimalRH % 10;
             }
-            
-            if(puntoDisplay == 2){
-                output_a(puntoDisplay);
-                output_d(numerosDisplayDos[mostrarSensado[puntoDisplay]]);
-            }else{ //Este else creo que se puede eliminar solo condicionando el primer if y funciona.
-                output_a(puntoDisplay);
-                output_d(numerosDisplay[mostrarSensado[puntoDisplay]]);
-            } 
          }
       }
+       
    }  
-} 
+}  
